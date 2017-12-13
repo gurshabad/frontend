@@ -1,4 +1,5 @@
-var banks = window.banks;
+var banks = window.banksList;
+
 var services = window.services;
 var templates = {};
 var responseComponents = {};
@@ -28,6 +29,7 @@ if (!window.gtag) {
 
 var mailUrlOpts = {
   mailto: {
+    fullEmail: true,
     base: 'mailto:',
     subject: 'subject',
     cc: 'cc',
@@ -35,19 +37,22 @@ var mailUrlOpts = {
     body: 'body'
   },
   gmail: {
-    base: 'https://mail.google.com/mail/u/0/?view=cm&fs=1&tf=1&source=mailto&to=',
+    fullEmail: true,
+    base:
+      'https://mail.google.com/mail/u/0/?view=cm&fs=1&tf=1&source=mailto&to=',
     subject: 'su',
     cc: 'cc',
     bcc: 'bcc',
     body: 'body'
   },
   yahoo: {
+    fullEmail: false,
     base: 'http://compose.mail.yahoo.com/?To=',
     subject: 'Subject',
     cc: 'Cc',
     bcc: 'Bcc',
     body: 'Body'
-  },
+  }
 };
 
 var i18n = new VueI18n({
@@ -55,6 +60,16 @@ var i18n = new VueI18n({
   messages: i18nMsgs,
   fallbackLocale: 'en'
 });
+
+function getCampaignType() {
+  // TODO: Use the page template to export a variable
+  switch (window.location.pathname) {
+    case '/mp/': return 'mp';
+    case '/service/': return 'gov';
+    case '/bank/': return 'bank';
+    case '/mobile/': return 'mobile';
+  }
+}
 
 forEach(document.querySelectorAll('script[id^=draft-notice-]'), function(
   index,
@@ -78,6 +93,28 @@ forEach(document.querySelectorAll('script[id^=draft-notice-]'), function(
   };
 });
 
+forEach(Object.keys(window.petitions), function(index, item) {
+  var campaignType = getCampaignType()
+  if (item.indexOf(campaignType) !== -1) {
+    axios.get('/petitions/' + item + '.txt').then(function(response) {
+      responseComponents[campaignType + '-' + item.split('-').pop()] = {
+        props: ['addressee', 'address', 'body'],
+        delimiters: ['((', '))'],
+        template:
+        '<textarea @copy="copied" cols="70" rows="10" name="content" id="response-content">' +
+        response.data +
+        '</textarea>',
+        methods: {
+          copied: function() {
+            this.$emit('copied');
+          }
+        }
+      };
+      app.petitionLocales.push(item.split('-').pop())
+    })
+  }
+})
+
 var app = new Vue({
   i18n: i18n,
   delimiters: ['[{', '}]'],
@@ -87,11 +124,15 @@ var app = new Vue({
     // we have loaded so far from a separate file
     // successfully
     localeLoaded: ['en'],
+    banks: {},
     locale: 'en',
-    serviceIndex: 0,
-    bankIndex: 0,
+    petitionLocales: [''],
+    serviceIndex: 'PAN',
+    bankIFSC: 'ALLA',
     state: 'UP',
     constituencyCode: 'UP-18',
+    telcoCode: 'airtel',
+    telcos: {},
     mps: {
       'UP-18': {
         index: 18,
@@ -103,11 +144,13 @@ var app = new Vue({
     },
     constituencies: [],
     campaign: 'mp',
+    petition: responseComponents['mp'],
     mailMethod: null,
     templates: {
       mp: '',
       bank: '',
-      service: ''
+      gov: '',
+      mobile: ''
     },
     showcopymsg: false
   },
@@ -137,24 +180,27 @@ var app = new Vue({
       }
     },
     getMailUrl(opts, encodedBody) {
-      return opts.base +
-      encodeURIComponent(this.email) +
-      '&' +
-      opts.subject +
-      '=' +
-      encodeURIComponent(this.subject) +
-      '&' +
-      opts.cc +
-      '=' +
-      encodeURIComponent(this.cc) +
-      '&' +
-      opts.bcc +
-      '=' +
-      encodeURIComponent(this.bcc) +
-      '&' +
-      opts.body +
-      '=' +
-      encodedBody;
+      var url =
+        opts.base +
+        encodeURIComponent(opts.fullEmail ? this.email : this.partialEmail) +
+        (opts.base === 'mailto:' ? '?' : '&') +
+        opts.subject +
+        '=' +
+        encodeURIComponent(this.subject) +
+        '&' +
+        opts.cc +
+        '=' +
+        encodeURIComponent(this.cc) +
+        '&' +
+        opts.bcc +
+        '=' +
+        encodeURIComponent(this.bcc);
+
+      if (encodedBody) {
+        url += '&' + opts.body + '=' + encodedBody;
+      }
+
+      return url;
     },
     /**
      * On desktop, we show 3 buttons for gmail/yahoo/mailto
@@ -243,12 +289,14 @@ var app = new Vue({
     },
     // We have 3 values for the campaign:
     // mp/service/bank
-    setInitialCampaign: function() {
-      // TODO: Use the page template to export a variable
-      if (document.location.pathname === '/mp/') {
-        this.campaign = 'mp';
-      } else if (document.location.pathname === '/service/') {
-        this.campaign = 'service';
+    setInitialCampaign: function () {
+      this.campaign = getCampaignType()
+    },
+    setPetitionLocale: function () {
+      if (responseComponents[this.campaign + '-' + this.locale]) {
+        this.petition = responseComponents[this.campaign + '-' + this.locale]
+      } else {
+        this.petition = responseComponents[this.campaign]
       }
     }
   },
@@ -258,17 +306,30 @@ var app = new Vue({
     },
     locale: function(newLocale) {
       this.setLocale(newLocale);
+      this.setPetitionLocale()
+
     },
-    serviceIndex: function(i) {
-      if (i === 'bank') {
-        this.campaign = 'bank';
-      } else {
-        this.campaign = 'service';
-      }
+    petitionLocales: function(newValue) {
+      this.setPetitionLocale()
     }
   },
   created: function() {
-    this.locale = window.localStorage.getItem('locale') || 'en';
+    var autodetect = window.location.search.split('lang=');
+    autodetect = autodetect[autodetect.length - 1].substr(0,2);
+
+    var locale = (this.locale =
+      window.localStorage.getItem('locale') ||
+      autodetect ||
+      window.navigator.languages
+        .map(function(l) {
+          return l.split('-')[0];
+        })
+        .filter(function(l) {
+          return !!i18nMsgs[l];
+        })[0] ||
+      window.navigator.language.split('-')[0]);
+
+    this.setLocale(locale);
 
     var self = this;
 
@@ -301,7 +362,22 @@ var app = new Vue({
 
         break;
 
-      case 'service':
+      case 'bank':
+        for (var i = 0; i < banks.length; i++) {
+          this.banks[banks[i].ifsc] = banks[i];
+        }
+        break;
+      case 'mobile':
+        for (var i = 0; i < telcos.length; i++) {
+          this.telcos[telcos[i].code] = telcos[i];
+        }
+        break;
+
+      case 'gov':
+        var msgs = {
+          services: this.services
+        };
+        self.$i18n.mergeLocaleMessage('en', msgs);
         break;
     }
   },
@@ -361,17 +437,30 @@ var app = new Vue({
     tweeturl: function() {
       return 'https://twitter.com/intent/tweet?text=' + this.tweettext;
     },
-    fullmailtourl: function () {
-      return this.getMailUrl(mailUrlOpts.mailto, encodeURIComponent(this.response));
+    facebookhref: function() {
+      return (
+        'https://www.facebook.com/sharer/sharer.php?u=' + window.location.href
+      );
     },
-    mailtourl: function () {
-      return this.getMailUrl(mailUrlOpts.mailto, 'Paste+Here');
+    facebookurl: function() {
+      return `https://www.facebook.com/plugins/share_button.php?href=${
+        window.location.href
+      }&layout=button&size=small&mobile_iframe=true&width=59&height=20`;
     },
-    gmailurl: function () {
-      return this.getMailUrl(mailUrlOpts.gmail, 'Paste+Here');
+    fullmailtourl: function() {
+      return this.getMailUrl(
+        mailUrlOpts.mailto,
+        encodeURIComponent(this.response)
+      );
     },
-    yahoourl: function () {
-      return this.getMailUrl(mailUrlOpts.yahoo, 'Paste+Here');
+    mailtourl: function() {
+      return this.getMailUrl(mailUrlOpts.mailto);
+    },
+    gmailurl: function() {
+      return this.getMailUrl(mailUrlOpts.gmail);
+    },
+    yahoourl: function() {
+      return this.getMailUrl(mailUrlOpts.yahoo);
     },
     mobile: function() {
       var IEMobile = /IEMobile/i.test(navigator.userAgent);
@@ -384,37 +473,37 @@ var app = new Vue({
         ) && !IEMobile
       );
     },
-    banks: function() {
-      return window.banks;
-    },
     services: function() {
       return window.services;
     },
     // This is maintained manually
+    // TODO: Do not break things if this returns undefined
     cc: function() {
       switch (this.campaign) {
         case 'mp':
           return '';
         case 'bank':
           return 'cabinet@nic.in,urjitrpatel@rbi.org.in,governor@rbi.org.in';
-        case 'service':
         case 'gov':
-          return 'cabinet@nic.in,narendramodi@narendramodi.in';
-        case 'telco':
+          return 'cabinet@nic.in';
+        case 'mobile':
           return 'cp@trai.gov.in';
       }
     },
     bcc: function() {
       var code = this.campaign + '-';
       switch (this.campaign) {
-        case 'service':
-          code += this.service.name;
+        case 'gov':
+          code += this.service.code;
           break;
         case 'bank':
-          code += this.serviceName;
+          code += this.bank.ifsc;
+          break;
+        case 'mobile':
+          code += this.telcoCode;
           break;
         case 'mp':
-          code = this.constituencyCode;
+          code += this.constituencyCode;
           break;
       }
       return (code + '@email.speakforme.in').toLowerCase();
@@ -434,21 +523,25 @@ var app = new Vue({
       switch (this.campaign) {
         case 'bank':
           return 'Threats to make bank accounts inoperable without Aadhaar';
-        case 'service':
+        case 'gov':
           return (
             'Threats to make ' +
             this.service.name +
             ' inoperable without Aadhaar'
           );
+        case 'mobile':
+          return 'Threats to make mobile connections inoperable without Aadhaar';
         case 'mp':
           return 'An appeal to raise my concerns regarding Aadhaar in Winter Session of Parliament';
       }
     },
     service: function() {
       switch (this.campaign) {
+        case 'mobile':
+          return this.telcos[this.telcoCode];
         case 'bank':
-          return this.banks[this.bankIndex];
-        case 'service':
+          return this.banks[this.bankIFSC];
+        case 'gov':
           return this.services[this.serviceIndex];
           break;
         // TODO: use a setter for constituency
@@ -458,6 +551,8 @@ var app = new Vue({
           if (this.constituency) {
             return this.constituency;
           }
+
+          // TODO: Pick a random constituency
           return {
             index: '18',
             name: 'Agra',
@@ -469,15 +564,19 @@ var app = new Vue({
       }
     },
     bank: function() {
-      return this.banks[this.bankIndex];
+      return this.banks[this.bankIFSC];
     },
+
+    // IMP: Make sure this does not have a comma
     personName: function() {
       switch (this.campaign) {
+        case 'mobile':
+          return 'Chairman (' + this.telcos[this.telcoCode].name + ')';
         case 'bank':
           return 'Chairman and MD (' + this.bank.name + ')';
         case 'mp':
-          return this.constituency.mp;
-        case 'service':
+          return this.constituency ? this.constituency.mp : '';
+        case 'gov':
           return this.service.personName;
       }
     },
@@ -485,42 +584,64 @@ var app = new Vue({
       return this.service.name;
     },
     email: function() {
+      var emails = this.partialEmail,
+        self = this;
+
+      return emails
+        .split(', ')
+        .map(function(e) {
+          return self.personName + ' <' + e + '>';
+        })
+        .filter(function(t) {
+          return t.trim().length > 0;
+        })
+        .join(', ');
+    },
+    // Some mail clients can't accept names with emails (Name <email@domain.com>)
+    partialEmail: function() {
       var e = this.service.email;
 
       var self = this;
       // email cleanup
       // TODO: TRIM trailing commas
-      return e
+      e = e
         .replace(';', ',')
         .replace(/[\[\(]dot[\]\)]/g, '.')
         .replace(/[\[\(]at[\]\)]/g, '@')
         .replace(' ', ',')
         .split(',')
+        .map(function(t) {
+          return t.trim();
+	})
         .filter(function(t) {
-          return t.trim().length > 0;
-        })
-        .map(function(e) {
-          return self.personName + ' <' + e + '>';
-        })
-        .join(', ');
+          return t.length > 0;
+	});
+
+      return e.join(', ');
     },
     response: function() {
       var template;
 
       switch (this.campaign) {
         case 'bank':
-          return this.templates.bank.trim();
-        case 'service':
-          return this.templates.service.trim();
+          template = this.templates.bank;
+          break;
+        case 'gov':
+          template = this.templates.gov;
           break;
         case 'mp':
-          // TODO: Somehow interpolate the current scope
-          // into this as a template, so we can use {{service.name}}
-          // inside the template
-          return this.templates.mp.trim();
+          template = this.templates.mp;
+          break;
+        case 'mobile':
+          template = this.templates.mobile;
           break;
       }
+
+      return template
+        .trim()
+        .replace(/\(\(addressee\)\)/g, this.personName)
+        .replace(/\(\(address\)\)/g, this.service.address);
     }
   },
-  components: responseComponents
+  // components: responseComponents
 });

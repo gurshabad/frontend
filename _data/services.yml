@@ -1,19 +1,20 @@
--
-  name: PDS
-  Department: |
-    Department of Food and Public Distribution, India
+EPFO:
+  name: Employees Provident Fund Org
+  code: epfo
+  department: Minister of State for Labour and Employment
+  personName: Dr. V.P Joy
   address: |
-    Ministry of Consumer Affairs,
-    Food and Public Distribution
-    Department of Food & PD
-    Krishi Bhawan,
-    New Delhi - 110001.
-    Phone: 23382504
-  email: asit.halder@nic.in
-  twitter: jagograhakjago
-  personName: Asit Halder
--
+      Dr. V.P Joy, IAS
+      Central P.F. Commissioner
+      EPFO Head Office, New Delhi,
+      Bhavishya Nidhi Bhawan,
+      14, Bhikaiji Cama Place,
+      New Delhi - 110 066"
+  email: cpfc@epfindia.gov.in
+  twitter: labourministry
+LPG:
   name: LPG
+  code: lpg
   department: Ministry of Petroleum and Natural Gas
   personName: Shri K.M.Mahesh
   address: |
@@ -24,8 +25,9 @@
     New Delhi - 110001
   email: mahesh.png@gov.in
   twitter: PetroleumMin
--
+MGNREGS:
   name: MGNREGS
+  code: mgnregs
   department: Ministry of Rural Department
   personName: Smt Aparajita Sarangi
   address: |
@@ -38,8 +40,9 @@
     New Delhi - 110001
   email: aparajitasarangi@gmail.com
   twitter: false
--
+NSAP:
   name: National Social Assistance Programme
+  code: nsap
   department: Ministry of Rural Department
   personName: Shri Manoranjan Kumar
   address: |
@@ -52,8 +55,46 @@
     New Delhi - 110001
   email: manoranjan.kumar@nic.in
   twitter: false
--
+PDS:
+  name: PDS
+  code: pds
+  Department: |
+    Department of Food and Public Distribution, India
+  address: |
+    Ministry of Consumer Affairs,
+    Food and Public Distribution
+    Department of Food & PD
+    Krishi Bhawan,
+    New Delhi - 110001.
+    Phone: 23382504
+  email: asit.halder@nic.in
+  twitter: jagograhakjago
+  personName: Asit Halder
+PAN:
+  name: PAN
+  code: pan
+  department: Ministry of Finance (CBDT)
+  personName: Shri Sushil Chandra
+  address: |
+    Shri Sushil Chandra
+    Chairperson​​, Central Board of Direct Tax,
+    Ministry of Finance,
+    Room No. 106,
+    2nd Floor, JeevanDeep Building,
+    Parliament Street,
+    New Delhi-110001
+    Phone: 011-23361571/23748738
+  email: >
+    fmo@nic.in,
+    chairman.cbdt@incometax.gov.in,
+    rsecy@nic.in
+  twitter: >
+    FinMinIndia
+    arunjaitley
+    adhia03
+PMJDY:
   name: PMJDY
+  code: pmjdy
   department: Ministry of Finance
   personName: Shri Arun Jaitley
   address: |
@@ -69,37 +110,3 @@
   twitter:
     FinMinIndia
     arunjaitley
--
-  name: Employees Provident Fund Org
-  department: Minister of State for Labour and Employment
-  personName: Dr. V.P Joy
-  address: |
-      Dr. V.P Joy, IAS
-      Central P.F. Commissioner
-      EPFO Head Office, New Delhi,
-      Bhavishya Nidhi Bhawan,
-      14, Bhikaiji Cama Place,
-      New Delhi - 110 066"
-  email: cpfc@epfindia.gov.in
-  twitter: labourministry
--
-  name: PAN
-  department: Ministry of Finance (CBDT)
-  personName: Shri Sushil Chandra
-  address: |
-    Shri Sushil Chandra
-    Chairperson​​, Central Board of Direct Tax,
-    Ministry of Finance,
-    Room No. 106,
-    2nd Floor, JeevanDeep Building,
-    Parliament Street,
-    New Delhi-110001
-    Phone: 011-23361571/23748738
-  email: >
-    fmo@nic.in
-    chairman.cbdt@incometax.gov.in
-    rsecy@nic.in
-  twitter: >
-    FinMinIndia
-    arunjaitley
-    adhia03

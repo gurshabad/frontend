@@ -24,17 +24,33 @@ layout: default
   <!-- ADD campaign specific data here -->
   <!-- This is the generic service notice for "services" -->
 
-  {% for notice in page.drafts %}
-    <script id="draft-notice-{{notice}}" type="text/template">{% include draft-notice-{{notice}}.md %}</script>
+  <script>
+    window.petitions = {}
+    {% for petition in site.petitions %}
+    window.petitions['{{petition.slug}}'] = {}
+    {% endfor %}
 
-    <script>
-    {% if notice == 'service' %}
-      window.services = {{site.data.services | jsonify}}
-      window.banks    = {{site.data.banks | jsonify}}
-    {% elsif notice == 'mp' %}
-      window.states   = {{site.data.states | jsonify}}
-    {% endif %}
-    </script>
+  </script>
+
+  {% for petition in site.petitions %}
+  {% capture petitionslug %}{{page.petition | append:'-en'}}{% endcapture %}
+
+  {% if petitionslug == petition.slug %}
+  <script id="{{page.petition}}" type="text/template">
+    {{ petition.content }}
+  </script>
+  {% endif %}
+
   {% endfor %}
-
+  <script>
+    {% if page.petition contains 'gov' %}
+    window.services = {{site.data.services | jsonify}}
+    {% elsif page.petition contains 'mp' %}
+    window.states   = {{site.data.states | jsonify}}
+    {% elsif page.petition contains 'mobile' %}
+    window.telcos   = {{site.data.telcos | jsonify}}
+    {% elsif page.petition contains 'bank' %}
+    window.banksList= {{site.data.banks | jsonify}}
+    {% endif %}
+  </script>
 </div>
